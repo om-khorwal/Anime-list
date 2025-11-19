@@ -10,7 +10,6 @@ type ChapterSummary = {
   createdAt: string;
 };
 
-/** Safe fetch helper */
 async function fetchJsonSafe(url: string, note = ""): Promise<any | null> {
   try {
     const res = await fetch(url, { next: { revalidate: 30 } });
@@ -26,7 +25,6 @@ async function fetchJsonSafe(url: string, note = ""): Promise<any | null> {
   }
 }
 
-/** Fetch ALL English chapters with pagination */
 async function fetchAllChapters(mangaId: string): Promise<ChapterSummary[]> {
   if (!mangaId) return [];
   const enc = encodeURIComponent(mangaId);
@@ -37,35 +35,24 @@ async function fetchAllChapters(mangaId: string): Promise<ChapterSummary[]> {
   while (true) {
     const url = `https://api.mangadex.org/chapter?manga=${enc}&translatedLanguage[]=en&limit=${limit}&offset=${offset}&order[chapter]=asc`;
     const res = await fetch(url, { next: { revalidate: 60 } });
-
     if (!res.ok) {
       const body = await res.text().catch(() => "<no body>");
       console.error("chapters fetch non-ok:", res.status, body, "requestUrl:", url);
       break;
     }
-
     const json = await res.json();
     const items = json.data || [];
     all = all.concat(items);
-
     if (!json.total || all.length >= json.total || items.length < limit) break;
-
     offset += limit;
   }
 
   const list: ChapterSummary[] = all.map((c: any) => {
     const numRaw = c.attributes.chapter;
     const num = numRaw ? parseFloat(numRaw) : NaN;
-    return {
-      id: c.id,
-      chapter: c.attributes.chapter || "",
-      title: c.attributes.title || "",
-      num: isNaN(num) ? null : num,
-      createdAt: c.attributes.createdAt,
-    };
+    return { id: c.id, chapter: c.attributes.chapter || "", title: c.attributes.title || "", num: isNaN(num) ? null : num, createdAt: c.attributes.createdAt };
   });
 
-  // Sort numeric first, fallback to createdAt ASC
   list.sort((a, b) => {
     if (a.num !== null && b.num !== null) return a.num - b.num;
     if (a.num !== null) return -1;
@@ -76,27 +63,17 @@ async function fetchAllChapters(mangaId: string): Promise<ChapterSummary[]> {
   return list;
 }
 
-/** Load chapter pages (image URLs) */
 async function getChapterPages(chapterId: string): Promise<string[] | null> {
   if (!chapterId) return null;
   const enc = encodeURIComponent(chapterId);
   const json = await fetchJsonSafe(`https://api.mangadex.org/at-home/server/${enc}`, "at-home");
   if (!json || !json.chapter) return null;
-
   const base = json.baseUrl;
   const hash = json.chapter.hash;
   const files: string[] = json.chapter.data || [];
-
   return files.map((f) => `${base}/data/${hash}/${f}`);
 }
 
-/**
- * NOTE:
- * We intentionally accept a loosely typed `props: any` here to avoid
- * Next.js/build-time PageProps mismatch issues on Vercel.
- *
- * Internally we validate types and use strong types for variables.
- */
 export default async function ChapterReader(props: any) {
   const params: { id?: string; chapterId?: string } = props?.params ?? {};
   const mangaId = params.id;
@@ -122,7 +99,6 @@ export default async function ChapterReader(props: any) {
     );
   }
 
-  // Explicitly typed list
   let list: ChapterSummary[] = [];
   try {
     list = await fetchAllChapters(mangaId);
@@ -144,7 +120,7 @@ export default async function ChapterReader(props: any) {
   const next = idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
 
   return (
-    <main className="p-6 max-w-4xl mx-auto">
+    <main className="p-6 max-w-4xl mx-auto text-white">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Link href={`/manga/${mangaId}`} className="text-sm text-neutral-600 hover:underline">← Back</Link>
@@ -158,10 +134,10 @@ export default async function ChapterReader(props: any) {
       </div>
 
       {pages === null ? (
-        <div className="p-6 rounded-lg bg-red-50 text-red-700">Unable to load chapter pages.</div>
+        <div className="p-6 rounded-lg bg-red-50 text-red-700">Unable to load chapter pages. Check server logs for details.</div>
       ) : pages.length === 0 ? (
         <div className="p-6 rounded-lg bg-yellow-50 text-yellow-800">
-          No pages found for this chapter. It might be removed.
+          No pages available for this chapter (it might be removed). Return to the <Link href={`/manga/${mangaId}`} className="underline">manga page</Link>.
         </div>
       ) : (
         <div className="space-y-6">

@@ -2,7 +2,15 @@
 import React from "react";
 import Link from "next/link";
 
-async function fetchJsonSafe(url: string, note = "") {
+type MangaCard = {
+  id: string;
+  title: string;
+  description: string;
+  coverUrl: string | null;
+  tags: string[];
+};
+
+async function fetchJsonSafe(url: string, note = ""): Promise<any | null> {
   try {
     const res = await fetch(url, { next: { revalidate: 60 } });
     if (!res.ok) {
@@ -17,12 +25,12 @@ async function fetchJsonSafe(url: string, note = "") {
   }
 }
 
-async function getMangaList() {
+async function getMangaList(): Promise<MangaCard[]> {
   const API = "https://api.mangadex.org/manga?limit=24&availableTranslatedLanguage[]=en";
   const json = await fetchJsonSafe(API, "manga list");
   if (!json?.data) return [];
 
-  const list = await Promise.all(
+  const list: MangaCard[] = await Promise.all(
     json.data.map(async (m: any) => {
       const title =
         m.attributes.title?.en ||
@@ -30,7 +38,6 @@ async function getMangaList() {
         Object.values(m.attributes.title || {})[0] ||
         "Untitled";
 
-      // cover art
       const coverRel = m.relationships?.find((r: any) => r.type === "cover_art");
       let coverUrl: string | null = null;
       if (coverRel) {
@@ -54,8 +61,8 @@ async function getMangaList() {
   return list;
 }
 
-export default async function MangaPage() {
-  let list = [];
+export default async function MangaPage(_: any) {
+  let list: MangaCard[] = [];
   try {
     list = await getMangaList();
   } catch (err) {
@@ -72,7 +79,7 @@ export default async function MangaPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-          {list.map((m: any) => (
+          {list.map((m) => (
             <Link key={m.id} href={`/manga/${m.id}`} className="group block">
               <div className="overflow-hidden rounded-2xl shadow-lg bg-white dark:bg-neutral-800">
                 {m.coverUrl ? (
@@ -80,12 +87,11 @@ export default async function MangaPage() {
                 ) : (
                   <div className="w-full h-56 bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-neutral-500">No Cover</div>
                 )}
-
                 <div className="p-4">
                   <h2 className="text-sm font-semibold leading-tight mb-1 truncate">{m.title}</h2>
                   <p className="text-xs text-neutral-500 line-clamp-3 mb-3">{m.description}</p>
                   <div className="flex gap-2 flex-wrap">
-                    {m.tags.map((t: string, idx: number) => (
+                    {m.tags.map((t, idx) => (
                       <span key={idx} className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40">
                         {t}
                       </span>

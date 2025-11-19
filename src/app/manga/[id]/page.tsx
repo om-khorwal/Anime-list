@@ -2,22 +2,30 @@
 import React from "react";
 import Link from "next/link";
 
-async function fetchJsonSafe(url: string, note = "") {
+type ChapterSummary = {
+  id: string;
+  chapter: string;
+  title: string;
+  num: number | null;
+  createdAt: string;
+};
+
+async function fetchJsonSafe(url: string, note = ""): Promise<any | null> {
   try {
     const res = await fetch(url, { next: { revalidate: 60 } });
     if (!res.ok) {
       const body = await res.text().catch(() => "<no body>");
       console.error(`[fetchJsonSafe] non-ok ${res.status} for ${note} -> ${url}`, body);
-      return { ok: false, body };
+      return null;
     }
-    return { ok: true, json: await res.json() };
+    return await res.json();
   } catch (err) {
     console.error(`[fetchJsonSafe] error for ${note} -> ${url}`, err);
-    return { ok: false, error: String(err) };
+    return null;
   }
 }
 
-async function fetchAllChapters(mangaId: string) {
+async function fetchAllChapters(mangaId: string): Promise<ChapterSummary[]> {
   if (!mangaId) return [];
   const enc = encodeURIComponent(mangaId);
   const limit = 100;
@@ -39,13 +47,13 @@ async function fetchAllChapters(mangaId: string) {
     offset += limit;
   }
 
-  const list = all.map((c: any) => {
+  const list: ChapterSummary[] = all.map((c: any) => {
     const numRaw = c.attributes.chapter;
     const num = numRaw ? parseFloat(numRaw) : NaN;
     return { id: c.id, chapter: c.attributes.chapter || "", title: c.attributes.title || "", num: isNaN(num) ? null : num, createdAt: c.attributes.createdAt };
   });
 
-  list.sort((a: any, b: any) => {
+  list.sort((a, b) => {
     if (a.num !== null && b.num !== null) return a.num - b.num;
     if (a.num !== null) return -1;
     if (b.num !== null) return 1;
@@ -100,9 +108,17 @@ async function getMangaAndChapters(id: string) {
   };
 }
 
-export default async function MangaDetails({ params }: any) {
-  const id = params?.id;
-  let data;
+export default async function MangaDetails(props: any) {
+  const id: string | undefined = props?.params?.id;
+  if (!id) {
+    return (
+      <div className="p-6">
+        <p className="text-red-500">Missing manga id.</p>
+      </div>
+    );
+  }
+
+  let data: any;
   try {
     data = await getMangaAndChapters(id);
   } catch (err) {
@@ -132,7 +148,9 @@ export default async function MangaDetails({ params }: any) {
           <p className="mt-2 text-sm text-neutral-600 line-clamp-6">{data.description}</p>
           <div className="mt-4">
             {latest ? (
-              <Link href={`/manga/${id}/chapter/${latest.id}`} className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:opacity-90 mr-3">Read Latest</Link>
+              <Link href={`/manga/${id}/chapter/${latest.id}`} className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:opacity-90 mr-3">
+                Read Latest
+              </Link>
             ) : (
               <span className="inline-block px-4 py-2 bg-neutral-200 text-neutral-700 rounded-md mr-3">No chapters</span>
             )}
