@@ -15,7 +15,7 @@ export default function Header() {
           href="/"
           className="text-xl font-bold text-gradient tracking-tight hover:opacity-80 transition"
         >
-          Ani-Ike
+          Anime-Ike
         </Link>
 
         <nav className="flex gap-5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -24,6 +24,9 @@ export default function Header() {
           </Link>
           <Link href="/about" className="hover:text-indigo-500 transition">
             About
+          </Link>
+           <Link href="/manga" className="hover:text-indigo-500 transition">
+            Manga
           </Link>
         
         </nav>

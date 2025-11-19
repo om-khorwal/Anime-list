@@ -1,0 +1,12 @@
+[
+  {
+    "id": "sample-1",
+    "coverUrl": null,
+    "attributes": { "title": { "en": "Sample Manga A" } }
+  },
+  {
+    "id": "sample-2",
+    "coverUrl": null,
+    "attributes": { "title": { "en": "Sample Manga B" } }
+  }
+]

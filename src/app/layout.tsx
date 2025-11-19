@@ -5,39 +5,32 @@ import "./globals.css";
 import Header from "../app/components/header";
 import Footer from "../app/components/footer";
 
+// Font setup
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
+// Metadata (with favicon)
 export const metadata: Metadata = {
-  title: "Ani-Ike",
-  description: "Explore anime with a clean, modern UI — light/dark theme.",
+  title: "Anime-Ike",
+  description: "Explore anime with a clean, modern UI.",
+  icons: {
+    icon: [
+      { url: "/sukuna.png" },
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico",
+  },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
-      suppressHydrationWarning   // 👈 important
-    >
-      <head>
-        {/* Keeps “dark” class in sync before hydration */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-(function () {
-  try {
-    var stored = localStorage.getItem('theme');
-    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var useDark = stored ? stored === 'dark' : prefersDark;
-    if (useDark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  } catch (e) {}
-})();
-          `,
-          }}
-        />
-      </head>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen flex flex-col antialiased">
         <Header />
         <main className="flex-1 w-full">{children}</main>
