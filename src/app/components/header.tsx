@@ -25,9 +25,9 @@ export default function Header() {
           <Link href="/about" className="hover:text-indigo-500 transition">
             About
           </Link>
-           <Link href="/manga" className="hover:text-indigo-500 transition">
+           {/* <Link href="/manga" className="hover:text-indigo-500 transition">
             Manga
-          </Link>
+          </Link> */}
         
         </nav>
       </div>

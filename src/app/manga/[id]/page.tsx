@@ -1,6 +1,7 @@
 // src/app/manga/[id]/page.tsx
 import React from "react";
 import Link from "next/link";
+import CoverImage from "../../components/CoverImage";
 
 type ChapterSummary = {
   id: string;
@@ -66,6 +67,7 @@ async function fetchAllChapters(mangaId: string): Promise<ChapterSummary[]> {
 async function getMangaAndChapters(id: string) {
   if (!id) throw new Error("missing manga id");
   const encId = encodeURIComponent(id);
+  const placeholder = "/mangadex-placeholder.png";
 
   const mRes = await fetch(`https://api.mangadex.org/manga/${encId}`, { next: { revalidate: 120 } });
   if (!mRes.ok) {
@@ -79,18 +81,11 @@ async function getMangaAndChapters(id: string) {
 
   // cover
   const coverRel = mangaJson.data.relationships?.find((r: any) => r.type === "cover_art");
-  let coverUrl: string | null = null;
+  let coverUrl: string = placeholder;
   if (coverRel) {
-    try {
-      const cr = await fetch(`https://api.mangadex.org/cover/${coverRel.id}`);
-      if (cr.ok) {
-        const cj = await cr.json();
-        const file = cj?.data?.attributes?.fileName;
-        if (file) coverUrl = `https://uploads.mangadex.org/covers/${mangaJson.data.id}/${file}`;
-      }
-    } catch (e) {
-      console.error("cover fetch error:", e);
-    }
+    const cr = await fetchJsonSafe(`https://api.mangadex.org/cover/${coverRel.id}`, "cover");
+    const file = cr?.data?.attributes?.fileName;
+    if (file) coverUrl = `/api/cover?manga=${encodeURIComponent(mangaJson.data.id)}&file=${encodeURIComponent(file)}`;
   }
 
   const title =
@@ -99,10 +94,12 @@ async function getMangaAndChapters(id: string) {
     Object.values(mangaJson.data.attributes.title || {})[0] ||
     "Untitled";
 
+  const description = mangaJson.data.attributes.description?.en || Object.values(mangaJson.data.attributes.description || {})[0] || "";
+
   return {
     id: mangaJson.data.id,
     title,
-    description: mangaJson.data.attributes.description?.en || Object.values(mangaJson.data.attributes.description || {})[0] || "",
+    description,
     coverUrl,
     chapters,
   };
@@ -133,51 +130,47 @@ export default async function MangaDetails(props: any) {
   const latest = data.chapters.length ? data.chapters[data.chapters.length - 1] : null;
 
   return (
-    <main className="p-6 max-w-4xl mx-auto text-white">
-      <div className="flex gap-6 items-start">
-        <div className="w-40 flex-shrink-0 rounded-2xl overflow-hidden shadow">
-          {data.coverUrl ? (
-            <img src={data.coverUrl} alt={data.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-56 bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">No Cover</div>
-          )}
+    <main className="p-6 max-w-5xl mx-auto text-white">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="md:col-span-1">
+          <div className="rounded-2xl overflow-hidden shadow">
+            <CoverImage src={data.coverUrl} alt={data.title} className="w-full h-auto object-cover" />
+          </div>
         </div>
 
-        <div>
+        <div className="md:col-span-2">
           <h1 className="text-2xl font-bold">{data.title}</h1>
           <p className="mt-2 text-sm text-neutral-600 line-clamp-6">{data.description}</p>
-          <div className="mt-4">
+          <div className="mt-4 flex gap-3">
             {latest ? (
-              <Link href={`/manga/${id}/chapter/${latest.id}`} className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:opacity-90 mr-3">
-                Read Latest
-              </Link>
+              <Link href={`/manga/${id}/chapter/${latest.id}`} className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:opacity-90">Read Latest</Link>
             ) : (
-              <span className="inline-block px-4 py-2 bg-neutral-200 text-neutral-700 rounded-md mr-3">No chapters</span>
+              <span className="inline-block px-4 py-2 bg-neutral-200 text-neutral-700 rounded-md">No chapters</span>
             )}
             <Link href="/manga" className="inline-block px-4 py-2 border rounded-md">Back to list</Link>
           </div>
+
+          <section className="mt-8">
+            <h2 className="text-lg font-semibold mb-3">Chapters ({data.chapters.length})</h2>
+
+            {data.chapters.length === 0 ? (
+              <p className="text-sm text-neutral-500">No English chapters found.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {data.chapters.slice().reverse().map((c: any) => (
+                  <Link key={c.id} href={`/manga/${id}/chapter/${c.id}`} className="p-3 rounded-lg border hover:shadow-md flex justify-between items-center">
+                    <div>
+                      <div className="text-sm font-medium">Chapter {c.chapter || "Oneshot"}</div>
+                      <div className="text-xs text-neutral-500">{c.title}</div>
+                    </div>
+                    <div className="text-xs text-neutral-400">{new Date(c.createdAt).toLocaleDateString()}</div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </div>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold mb-3">Chapters ({data.chapters.length})</h2>
-
-        {data.chapters.length === 0 ? (
-          <p className="text-sm text-neutral-500">No English chapters found.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-2">
-            {data.chapters.slice().reverse().map((c: any) => (
-              <Link key={c.id} href={`/manga/${id}/chapter/${c.id}`} className="p-3 rounded-lg border hover:shadow-md flex justify-between items-center">
-                <div>
-                  <div className="text-sm font-medium">Chapter {c.chapter || "Oneshot"}</div>
-                  <div className="text-xs text-neutral-500">{c.title}</div>
-                </div>
-                <div className="text-xs text-neutral-400">{new Date(c.createdAt).toLocaleDateString()}</div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
     </main>
   );
 }
